@@ -918,8 +918,8 @@ function processarTudo(){
 
   // ── CARTÃO STONE: passadas Kigi × transações Stone (por bruto) + auditoria de taxa ──
   if(D.stone){
-    const esp=D.kigi.swipesStone.map(s=>({valor:s.bruto, ...s}));
-    const rec=D.stone.recebimentos.map(r=>({valor:r.bruto, ...r}));
+    const esp=D.kigi.swipesStone.map(s=>({...s, valor:s.bruto}));
+    const rec=D.stone.recebimentos.map(r=>({...r, valor:r.bruto}));
     out.cartao=conciliarPorValor(esp,rec);
     out.cartao.conc.forEach(c=>{
       const s=c.recebido;
