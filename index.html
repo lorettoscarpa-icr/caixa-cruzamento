@@ -739,50 +739,96 @@ async function lerKigi(file){
       tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); (porY[y]=porY[y]||[]).push(it.str); });
       Object.keys(porY).map(Number).sort((a,b)=>b-a).forEach(y=>linhas.push(porY[y].join(' ').replace(/\s+/g,' ').trim()));
     }
-    // corta no Totalizadores
-    const idxTot=linhas.findIndex(l=>/Totalizadores/i.test(l));
-    if(idxTot>-1) linhas=linhas.slice(0,idxTot);
-
-    const vendas=[]; let atual=null, modo=false;
-    linhas.forEach(ln=>{
-      const s=ln.trim();
-      const m=s.match(RE_CAB);
-      if(m){ atual={n:m[1],tipo:m[2],cliente:m[4].trim(),vendedor:m[6],total:parseNum(m[8]),pgtos:[]}; vendas.push(atual); modo=false; return; }
-      if(/Pagamentos:/.test(s)){ modo=true; const resto=s.split('Pagamentos:')[1]; if(resto&&resto.trim()&&atual) atual.pgtos.push(...parsePagamentos(resto)); return; }
-      if(modo&&atual) atual.pgtos.push(...parsePagamentos(s));
-    });
-
-    // Reconstrói passadas de cartão Stone (soma parcelas por venda+bandeira+valor-parcela)
-    const swipesStone=[];
-    vendas.forEach(v=>{
-      const cards=v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Stone');
-      const grupos={};
-      cards.forEach(p=>{ const k=p.bandeira+'|'+Math.round(p.valor); (grupos[k]=grupos[k]||[]).push(p); });
-      Object.values(grupos).forEach(ps=>{
-        swipesStone.push({ venda:v.n, cliente:v.cliente, bandeira:ps[0].bandeira,
-          ehDebito:ps[0].forma==='debito', parcelas:ps.length,
-          bruto:+ps.reduce((s,x)=>s+x.valor,0).toFixed(2) });
-      });
-    });
-
-    const soma=(f,adq)=>vendas.reduce((s,v)=>s+v.pgtos.filter(p=>p.forma===f&&(!adq||p.adq===adq)).reduce((a,p)=>a+p.valor,0),0);
-    D.kigi={
-      arquivo:file.name, vendas, swipesStone,
-      totFaturado:vendas.reduce((s,v)=>s+(v.total>0?v.total:0),0),
-      stoneBruto:swipesStone.reduce((s,x)=>s+x.bruto,0),
-      // Pix QR (direto) + Pix Maquininha (Sipag) — ambos caem no Sicoob, sem taxa
-      pixSicoob:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='pix_qr'||p.forma==='pix_maq').map(p=>({...p,cliente:v.cliente,venda:v.n,tipoPix:p.forma==='pix_maq'?'Maquininha':'Chave/QR'}))),
-      // cartões via Sipag/Sicoob (raro) — liquidam no Sicoob, fora do CSV Stone
-      cartaoSipag:vendas.flatMap(v=>v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Sipag').map(p=>({...p,cliente:v.cliente,venda:v.n}))),
-      dinheiro:soma('dinheiro'),
-      creditoLoja:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='credito_loja').map(p=>({...p,cliente:v.cliente,venda:v.n,tipo:v.tipo})))
-    };
-    D.kigi.totPixSicoob=D.kigi.pixSicoob.reduce((s,p)=>s+p.valor,0);
-    D.kigi.totCartaoSipag=D.kigi.cartaoSipag.reduce((s,p)=>s+p.valor,0);
-    const meta=`<b>${vendas.length}</b> vendas · Stone <b>${fmtBRL(D.kigi.stoneBruto)}</b> · Pix Sicoob <b>${fmtBRL(D.kigi.totPixSicoob)}</b> · Dinheiro <b>${fmtBRL(D.kigi.dinheiro)}</b>`;
+    D.kigi=parseFechamentoKigi(linhas, file.name);
+    const k=D.kigi;
+    const per=k.periodo.ini&&k.periodo.fim&&k.periodo.ini!==k.periodo.fim?` · ${brData(k.periodo.ini)}–${brData(k.periodo.fim)}`:(k.periodo.ini?` · ${brData(k.periodo.ini)}`:'');
+    const meta=`<b>${k.vendas.length}</b> vendas${per} · Cartão <b>${fmtBRL(k.stoneBruto)}</b> · Pix <b>${fmtBRL(k.totPixSicoob)}</b> · Dinheiro <b>${fmtBRL(k.dinheiro)}</b>`;
     marcarUp('up-kigi','meta-kigi',file.name,meta);
-    toast(`Kigi: ${vendas.length} vendas, ${swipesStone.length} passadas Stone`,'ok');
+    toast(`Kigi: ${k.vendas.length} vendas${k.splits?` (${k.splits} dividida(s))`:''}`,'ok');
   }catch(e){ console.error(e); toast('Erro ao ler PDF do Kigi','er'); desmarcarUp('up-kigi'); }
+}
+
+function brData(iso){ if(!iso) return ''; const [a,m,d]=iso.split('-'); return `${d}/${m}`; }
+const FORMA_MAP={'Cartão de Crédito':'credito','Cartão de Débito':'debito','Pix (Maquininha)':'pix_maq','Pix (Chave/Qr-Code)':'pix_qr','Crédito na loja':'credito_loja','Crediário Loja':'crediario','Dinheiro':'dinheiro'};
+const INICIAIS={'Jh':'Jhennifer','N':'Natália','M':'Michelly','Y':'Ialey','Ia':'Ialey'};
+
+/* Parser do relatório "Fechamento de caixa - Vendas detalhadas" (Kigi).
+   Lê período, totais por tipo (pág.1), bandeiras (pág.4) e vendas detalhadas (pág.3).
+   Vendas divididas têm o valor por forma resolvido pelos residuais dos totais (back-solve). */
+function parseFechamentoKigi(linhas, arquivo){
+  const texto=linhas.join('\n');
+  const toISO=br=>{ const [d,m,a]=br.split('/'); return `${a}-${m}-${d}`; };
+  const mp=texto.match(/Período:\s*(\d{2}\/\d{2}\/\d{4})[\s\S]*?(\d{2}\/\d{2}\/\d{4})/);
+  const periodo={ ini:mp?toISO(mp[1]):'', fim:mp?toISO(mp[2]):'' };
+  // totais por tipo: Dinheiro Débito Depósito Crédito Cheque Título Pix
+  const chaves=['Dinheiro','Debito','Deposito','Credito','Cheque','Titulo','Pix'];
+  let totaisTipo={};
+  for(const ln of linhas){
+    if(!/^Total:/.test(ln)) continue;
+    const vals=ln.match(/\(?R\$\s*[\-\d.,]+\)?/g);
+    if(vals&&vals.length===7){ vals.forEach((v,i)=>{ const neg=/\(/.test(v); totaisTipo[chaves[i]]=parseNum(v.replace(/[()R$\s]/g,''))*(neg?-1:1); }); break; }
+  }
+  const tt=k=>Math.abs(totaisTipo[k]||0);
+  const msi=texto.match(/Saldo inicial\s*R\$\s*([\d.,]+)/);
+  const saldoInicial=msi?parseNum(msi[1]):0;
+  const bandeiras={}; let mb; const reB=/(MASTERCARD|VISA|ELO|AMERICANEXPRESS|HIPERCARD|DINERS)\s+(Crédito|Credito|Débito|Debito)\s+R\$([\d.,]+)/g;
+  while((mb=reB.exec(texto))){ bandeiras[`${mb[1]} ${/r[ée]d/i.test(mb[2])?'Crédito':'Débito'}`]=parseNum(mb[3]); }
+  const RE_VENDA=/^(Venda Simples|Venda por Troca|Devolução por troca|Venda Cartão Presente)\s+(.+?)\s+([\d.]+)\s+(\d{2}\/\d{2}\/\d{4})\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?$/;
+  const vendas=[];
+  linhas.forEach((ln,i)=>{
+    const m=ln.match(RE_VENDA); if(!m) return;
+    let resto=m[2].trim(), ini='';
+    const mm=resto.match(/\s(Jh|Ia|Y|N|M)$/);
+    if(mm){ ini=mm[1]; resto=resto.slice(0,mm.index).trim(); }
+    const prox=(linhas[i+1]||'');
+    const formasTxt=/Pagos em:/.test(prox)?prox.split('Pagos em:')[1].trim():'';
+    const formas=formasTxt.split(',').map(f=>FORMA_MAP[f.trim()]||f.trim()).filter(Boolean);
+    vendas.push({ n:m[3].replace(/\./g,''), tipo:m[1], cliente:resto, vendedor:ini, vendedora:INICIAIS[ini]||'',
+      data:toISO(m[4]), total:parseNum(m[8]), formas, pgtos:[] });
+  });
+  const isCard=f=>f==='credito'||f==='debito', isPix=f=>f==='pix_maq'||f==='pix_qr', isMoney=f=>isCard(f)||isPix(f);
+  const single={credito:0,debito:0,pix_maq:0,pix_qr:0};
+  vendas.forEach(v=>{ if(v.formas.length===1&&single[v.formas[0]]!==undefined) single[v.formas[0]]+=v.total; });
+  let resCred=+(tt('Credito')-single.credito).toFixed(2);
+  let resDeb=+(tt('Debito')-single.debito).toFixed(2);
+  let resPix=+(tt('Pix')-single.pix_maq-single.pix_qr).toFixed(2);
+  let nSplit=0;
+  vendas.forEach(v=>{
+    if(v.formas.length===1){
+      const f=v.formas[0];
+      v.pgtos.push({forma:f, valor:v.total, bandeira:'', adq:isCard(f)?'Stone':isPix(f)?'Sicoob':''});
+    } else if(v.formas.length>1){
+      nSplit++; v._dividida=true; let usado=0;
+      v.formas.forEach(f=>{
+        let val=0;
+        if(f==='credito'){ val=resCred; resCred=0; }
+        else if(f==='debito'){ val=resDeb; resDeb=0; }
+        else if(isPix(f)){ val=resPix; resPix=0; }
+        if(val>0){ v.pgtos.push({forma:f, valor:+val.toFixed(2), bandeira:'', adq:isCard(f)?'Stone':'Sicoob', _estimado:true}); usado+=val; }
+      });
+      const neutra=v.formas.find(f=>f==='credito_loja'||f==='crediario');
+      if(neutra) v.pgtos.push({forma:neutra, valor:+(v.total-usado).toFixed(2), bandeira:'', adq:''});
+      else if(usado<v.total-0.05){
+        const resto=v.formas.find(isMoney)||v.formas[0];
+        v.pgtos.push({forma:resto, valor:+(v.total-usado).toFixed(2), bandeira:'', adq:isCard(resto)?'Stone':isPix(resto)?'Sicoob':'', _incerto:true});
+      }
+    }
+  });
+  const swipesStone=vendas.flatMap(v=>v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Stone').map(p=>({ venda:v.n, cliente:v.cliente, bandeira:p.bandeira||'', ehDebito:p.forma==='debito', parcelas:1, bruto:p.valor })));
+  const k={
+    arquivo, periodo, totaisTipo, bandeiras, saldoInicial, splits:nSplit,
+    vendas, swipesStone,
+    totFaturado:vendas.reduce((s,v)=>s+(v.total>0?v.total:0),0),
+    stoneBruto:swipesStone.reduce((s,x)=>s+x.bruto,0),
+    pixSicoob:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='pix_qr'||p.forma==='pix_maq').map(p=>({...p,cliente:v.cliente,venda:v.n,tipoPix:p.forma==='pix_maq'?'Maquininha':'Chave/QR'}))),
+    cartaoSipag:[],
+    dinheiro: tt('Dinheiro'), titulo: tt('Titulo'), deposito: tt('Deposito'),
+    creditoLoja:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='credito_loja').map(p=>({...p,cliente:v.cliente,venda:v.n,tipo:v.tipo}))),
+    crediario:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='crediario').map(p=>({...p,cliente:v.cliente,venda:v.n})))
+  };
+  k.totPixSicoob=k.pixSicoob.reduce((s,p)=>s+p.valor,0); k.totCartaoSipag=0;
+  k.porDia={}; vendas.forEach(v=>{ if(v.total>0) k.porDia[v.data]=(k.porDia[v.data]||0)+v.total; });
+  return k;
 }
 
 /* ═════════════ PARSER STONE (CSV real de vendas/recebíveis) ═════════════
@@ -1022,7 +1068,10 @@ function renderResultados(){
   const k=D.kigi;
   const tudoBate=(falta+extra)<=TOL;
   const d=DATA_ATUAL;
-  const dataExt=`${String(d.getDate()).padStart(2,'0')} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  const perK=k.periodo||{};
+  const dataExt = (perK.ini && perK.fim && perK.ini!==perK.fim)
+    ? `${brData(perK.ini)} a ${brData(perK.fim)} · ${Object.keys(k.porDia||{}).length||2} dias`
+    : (perK.ini ? brData(perK.ini)+'/'+perK.ini.slice(0,4) : `${String(d.getDate()).padStart(2,'0')} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`);
   const pend=r.cartao?(r.cartao.falta.length+r.cartao.sobra.length):0;
   const semKigiAbertos=(r.semKigi||[]).filter(x=>!x.resolvido && !x._cruzado);
   const semKigiVal=semKigiAbertos.reduce((s,x)=>s+x.valor,0);
@@ -1063,6 +1112,8 @@ function renderResultados(){
   linhas+=`<tr style="border-left:2px solid var(--ou)"><td class="tcat" style="color:var(--ou2)">💵 Dinheiro (caixa físico)</td><td class="num">${fmtBRL(k.dinheiro)}</td><td class="num">${D.dinheiroContado?fmtBRL(D.dinheiroContado):'—'}</td><td class="num" style="color:${Math.abs((D.dinheiroContado||0)-k.dinheiro)<=TOL?'#a8d8a8':'#e0a0a0'}">${D.dinheiroContado||k.dinheiro?fmtBRL((D.dinheiroContado||0)-k.dinheiro):'—'}</td><td style="font-size:11px;color:var(--cr3)">não entra em Sicoob nem Stone · contar na aba Dinheiro</td></tr>`;
   const creditoTot=k.creditoLoja.reduce((s,c)=>s+c.valor,0);
   linhas+=`<tr style="opacity:.65"><td class="tcat">Crédito na loja (troca)</td><td class="num">${fmtBRL(creditoTot)}</td><td class="num">—</td><td class="num">—</td><td style="font-size:11px;color:var(--cr3)">neutro · não é dinheiro</td></tr>`;
+  if((k.crediario&&k.crediario.length)||k.titulo>0){ const cr=(k.crediario||[]).reduce((s,c)=>s+c.valor,0)||k.titulo; linhas+=`<tr style="opacity:.65"><td class="tcat">Crediário / Título</td><td class="num">${fmtBRL(cr)}</td><td class="num">—</td><td class="num">—</td><td style="font-size:11px;color:var(--cr3)">venda a prazo · recebe depois</td></tr>`; }
+  if(k.deposito>0){ linhas+=`<tr style="opacity:.65"><td class="tcat">Depósito (título recebido)</td><td class="num">${fmtBRL(k.deposito)}</td><td class="num">—</td><td class="num">—</td><td style="font-size:11px;color:var(--cr3)">recebimento de crediário anterior</td></tr>`; }
   document.getElementById('res-resumo').innerHTML=
     hero+`<div class="slbl">Faturamento do dia <span class="slbl-tag">${fmtBRL(k.totFaturado)}</span></div>
      <div class="tab-wrap"><table class="rec">
@@ -1335,7 +1386,7 @@ function renderVendCfg(){
     return `<div class="vend-cfg-item"><span class="cod">${cod}</span><select data-cod="${cod}">${opts}</select></div>`;
   }).join('');
 }
-function nomeVend(cod){ return VEND_MAP[cod]||('cód '+cod); }
+function nomeVend(cod){ return VEND_MAP[cod]||INICIAIS[cod]||(cod?('cód '+cod):''); }
 
 function calcVendedoras(){
   // Divergência atribuível à vendedora: vendas no Kigi não recebidas (cartão falta + pix falta)
@@ -1343,7 +1394,7 @@ function calcVendedoras(){
   if(!D.kigi||!D.resultado) return null;
   const r=D.resultado;
   const porVend={};
-  const init=(cod)=>{ const nome=nomeVend(cod); porVend[nome]=porVend[nome]||{nome,faltaValor:0,faltaQtd:0,bandBranco:0,totalVendas:0,faturado:0}; return porVend[nome]; };
+  const init=(cod)=>{ const nome=nomeVend(cod)||'Sem vendedora'; porVend[nome]=porVend[nome]||{nome,faltaValor:0,faltaQtd:0,bandBranco:0,totalVendas:0,faturado:0}; return porVend[nome]; };
   // faturado por vendedora
   D.kigi.vendas.forEach(v=>{ if(v.total>0){ const o=init(v.vendedor); o.totalVendas++; o.faturado+=v.total; } });
   // cartão faltante (passada Kigi sem Stone) -> tem venda/cliente; atribui pelo código da venda
