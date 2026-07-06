@@ -370,7 +370,7 @@ table.rec tr:hover td{background:rgba(255,255,255,.015);}
     </div>
   </div>
   <input type="file" id="in-kigi" accept=".pdf,.html,.htm" style="display:none" onchange="lerKigi(this.files[0])">
-  <input type="file" id="in-stone" accept=".csv,.pdf" style="display:none" onchange="lerStone(this.files[0])">
+  <input type="file" id="in-stone" accept=".csv,.xlsx,.xls,.pdf" style="display:none" onchange="lerStone(this.files[0])">
   <input type="file" id="in-sicoob" accept=".pdf" style="display:none" onchange="lerSicoob(this.files[0])">
 
   <div class="acoes-rec">
@@ -897,19 +897,33 @@ async function lerStone(file){
   marcarUp('up-stone','meta-stone',file.name,'lendo...');
   try{
     let recebimentos=[];
+    let head=null, rows=null;
     if(/\.csv$/i.test(file.name)){
       const txt=await file.text();
       const linhas=txt.split(/\r?\n/).filter(l=>l.trim());
-      const head=linhas[0].split(';').map(norm);
+      head=linhas[0].split(';').map(norm);
+      rows=linhas.slice(1).map(l=>l.split(';'));
+    } else if(/\.xlsx?$/i.test(file.name)){
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+      // acha a linha de cabeçalho (contém BANDEIRA e BRUTO)
+      let hi=aoa.findIndex(r=>r.some(c=>/bandeira/i.test(String(c)))&&r.some(c=>/bruto/i.test(String(c))));
+      if(hi<0) hi=0;
+      head=aoa[hi].map(norm);
+      rows=aoa.slice(hi+1);
+    }
+    if(head&&rows){
       const ci=(...keys)=>head.findIndex(h=>keys.some(k=>h.includes(k)));
       const cBand=ci('bandeira'), cProd=ci('produto'), cParc=ci('parcela'),
             cBruto=ci('bruto'), cLiq=ci('liquido','líquido'), cDescU=ci('unificado'),
             cCap=ci('captura'), cStatus=ci('status'), cData=ci('data da venda'),
             cCartao=ci('n do cartao','cartao'), cStoneId=ci('stone id');
-      linhas.slice(1).forEach(l=>{
-        const c=l.split(';');
+      rows.forEach(c=>{
+        if(!c||!c.length) return;
         const status=cStatus>-1?c[cStatus]:'';
-        if(cStatus>-1 && !/aprovad/i.test(status)) return;       // ignora não-aprovadas
+        if(cStatus>-1 && !/aprovad/i.test(String(status))) return;   // ignora não-aprovadas
         const bruto=parseNum(cBruto>-1?c[cBruto]:0);
         if(bruto<=0) return;
         const liq=parseNum(cLiq>-1?c[cLiq]:0);
