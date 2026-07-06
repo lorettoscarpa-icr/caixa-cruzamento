@@ -126,6 +126,12 @@ main{max-width:1180px;margin:0 auto;padding:32px 24px 80px;}
 .tab-btn:hover{color:var(--ou2);}
 .tab-btn.ativa{color:var(--ou);border-bottom-color:var(--ou);font-weight:700;}
 .tab-cont{display:none;} .tab-cont.ativa{display:block;}
+.dv-nav{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.dv-btn{background:rgba(0,0,0,.18);border:1px solid var(--oud2);color:var(--cr3);font-family:'Barlow',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:9px 18px;cursor:pointer;transition:all .15s;font-weight:500;}
+.dv-btn:hover{color:var(--ou2);border-color:var(--ou);}
+.dv-btn.ativa{color:var(--v0);background:var(--ou);border-color:var(--ou);font-weight:700;}
+.dv-pane{display:none;} .dv-pane.ativa{display:block;}
+.det-pane{display:none;} .det-pane.ativa{display:block;}
 
 /* ── SECTION LABEL ── */
 .slbl{font-size:10px;letter-spacing:3.5px;text-transform:uppercase;color:var(--cr3);padding-bottom:12px;border-bottom:1px solid var(--oud2);margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -229,6 +235,33 @@ table.rec tr:hover td{background:rgba(255,255,255,.015);}
 .vend-stat{font-size:11px;color:var(--cr3);}
 .vend-val{font-family:'Cormorant Garamond',serif;font-size:18px;}
 .vend-val.er{color:#e0a0a0;} .vend-val.ok{color:#a8d8a8;}
+/* ── CONFERÊNCIA POR CONTA (layout estilo Kigi) ── */
+.kg-sec{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--cr3);margin:26px 0 10px;}
+.kg-conta{border:1px solid var(--oud2);background:rgba(255,255,255,.02);margin-bottom:10px;}
+.kg-head{display:grid;grid-template-columns:1fr auto auto auto 34px;gap:18px;align-items:center;padding:14px 18px;cursor:pointer;transition:background .2s;}
+.kg-head:hover{background:rgba(212,180,90,.04);}
+.kg-nome{font-size:14px;color:var(--cr);}
+.kg-nome b{color:var(--ou2);font-weight:600;}
+.kg-stat{font-size:12px;color:var(--cr3);white-space:nowrap;}
+.kg-stat b.ok{color:#a8d8a8;} .kg-stat b.er{color:#e8b0b0;} .kg-stat b.zero{color:#a8d8a8;}
+.kg-chev{width:26px;height:26px;border:1px solid var(--oud2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--cr3);font-size:11px;transition:transform .25s;}
+.kg-conta.aberta .kg-chev{transform:rotate(180deg);border-color:var(--ou);color:var(--ou);}
+.kg-hist{display:none;border-top:1px solid var(--oud2);padding:6px 18px 14px;}
+.kg-conta.aberta .kg-hist{display:block;}
+.kg-hist-tit{display:grid;grid-template-columns:1fr 130px 110px 96px;gap:12px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cr3);padding:10px 0 8px;border-bottom:1px solid var(--oud2);}
+.kg-row{display:grid;grid-template-columns:1fr 130px 110px 96px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;}
+.kg-row:last-child{border-bottom:none;}
+.kg-desc{color:var(--cr2);} .kg-desc b{color:var(--cr);font-weight:500;}
+.kg-desc .vend-tag{color:var(--ou2);font-weight:600;}
+.kg-data{font-family:'DM Mono',monospace;font-size:11px;color:var(--cr3);}
+.kg-val{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--cr);text-align:right;}
+.kg-btn{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 0;text-align:center;cursor:pointer;border:1px solid var(--oud2);background:rgba(0,0,0,.2);color:var(--cr3);transition:all .2s;}
+.kg-btn:hover{border-color:var(--ou);color:var(--ou2);}
+.kg-btn.ok{background:rgba(96,160,80,.22);border-color:rgba(140,200,120,.45);color:#b8e0a8;cursor:default;}
+.kg-btn.manual{background:rgba(212,180,90,.15);border-color:rgba(212,180,90,.45);color:var(--ou2);}
+.kg-btn.neutro{border:none;background:none;color:var(--cr3);cursor:default;}
+@media(max-width:720px){.kg-head{grid-template-columns:1fr auto 34px;} .kg-head .kg-stat:nth-child(2){display:none;} .kg-hist-tit,.kg-row{grid-template-columns:1fr 90px 80px;} .kg-hist-tit span:nth-child(2),.kg-row .kg-data{display:none;}}
+
 .sk-alerta{background:linear-gradient(135deg,rgba(192,80,74,.18),rgba(192,80,74,.04));border:1px solid rgba(192,80,74,.4);border-left:3px solid var(--er);padding:18px 22px;margin-bottom:22px;}
 .sk-alerta-val{font-family:'Cormorant Garamond',serif;font-size:30px;color:#e8b0b0;font-weight:400;}
 .sk-alerta-sub{font-size:12px;color:var(--cr2);margin-top:4px;}
@@ -381,7 +414,7 @@ table.rec tr:hover td{background:rgba(255,255,255,.015);}
 
   <!-- KPIs -->
   <div class="kpis" id="kpis">
-    <div class="kpi"><div class="kpi-lbl">Faturado (Kigi)</div><div class="kpi-val" id="kpi-kigi">R$ 0,00</div></div>
+    <div class="kpi"><div class="kpi-lbl">A receber (cartão+Pix+din.)</div><div class="kpi-val" id="kpi-kigi">R$ 0,00</div></div>
     <div class="kpi ok"><div class="kpi-lbl">Conciliado</div><div class="kpi-val" id="kpi-ok">R$ 0,00</div></div>
     <div class="kpi er"><div class="kpi-lbl">No Kigi, não recebido</div><div class="kpi-val" id="kpi-falta">R$ 0,00</div></div>
     <div class="kpi am"><div class="kpi-lbl">Recebido, sem Kigi</div><div class="kpi-val" id="kpi-extra">R$ 0,00</div></div>
@@ -390,43 +423,52 @@ table.rec tr:hover td{background:rgba(255,255,255,.015);}
   <!-- TABS -->
   <div class="tabs-bar">
     <button class="tab-btn ativa" data-tab="resumo" onclick="trocarTab('resumo')">Resumo</button>
-    <button class="tab-btn" data-tab="semkigi" onclick="trocarTab('semkigi')" id="tabbtn-semkigi">⚠ Recebido s/ Kigi</button>
-    <button class="tab-btn" data-tab="naorecebido" onclick="trocarTab('naorecebido')" id="tabbtn-naorecebido">No Kigi, não recebido</button>
-    <button class="tab-btn" data-tab="cartao" onclick="trocarTab('cartao')">Cartão · Stone</button>
-    <button class="tab-btn" data-tab="taxas" onclick="trocarTab('taxas')">Taxas</button>
-    <button class="tab-btn" data-tab="pix" onclick="trocarTab('pix')">Pix · Sicoob</button>
-    <button class="tab-btn" data-tab="vendedoras" onclick="trocarTab('vendedoras')">Vendedoras</button>
+    <button class="tab-btn" data-tab="porconta" onclick="trocarTab('porconta')">Conferência por conta</button>
+    <button class="tab-btn" data-tab="divergencias" onclick="trocarTab('divergencias')" id="tabbtn-diverg">⚠ Divergências</button>
     <button class="tab-btn" data-tab="dinheiro" onclick="trocarTab('dinheiro')">💵 Dinheiro</button>
+    <button class="tab-btn" data-tab="detalhes" onclick="trocarTab('detalhes')">Detalhes</button>
   </div>
 
   <div class="tab-cont ativa" id="tab-resumo"><div id="res-resumo"><div class="vazio-msg">Carregue os arquivos e clique em “Cruzar Caixa”.</div></div></div>
 
-  <div class="tab-cont" id="tab-semkigi"><div id="res-semkigi"><div class="vazio-msg">Cruze o caixa para ver o que foi recebido sem registro no Kigi.</div></div></div>
+  <div class="tab-cont" id="tab-porconta"><div id="res-porconta"><div class="vazio-msg">Cruze o caixa para ver a conferência por conta.</div></div></div>
 
-  <div class="tab-cont" id="tab-naorecebido"><div id="res-naorecebido"><div class="vazio-msg">Cruze o caixa para ver vendas lançadas no Kigi que não foram recebidas.</div></div></div>
-
-  <div class="tab-cont" id="tab-cartao">
-    <div style="margin:4px 0 16px;">
-      <button class="taxas-toggle" onclick="toggleTaxas()">▸ Ajustar taxas combinadas (Visa/Master POS)</button>
+  <div class="tab-cont" id="tab-divergencias">
+    <div class="dv-nav">
+      <button class="dv-btn ativa" data-dv="semkigi" onclick="trocarDiv('semkigi')" id="dvbtn-semkigi">Recebido sem Kigi</button>
+      <button class="dv-btn" data-dv="naorecebido" onclick="trocarDiv('naorecebido')" id="dvbtn-naorecebido">No Kigi, não recebido</button>
     </div>
-    <div class="taxas-wrap" id="taxas-wrap">
-      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cr3);">Taxas combinadas p/ auditoria (%) — Elo/Amex/online pendentes</div>
-      <div class="taxas-grid" id="taxas-grid"></div>
-    </div>
-    <div id="res-cartao"></div>
+    <div class="dv-pane ativa" id="dv-semkigi"><div id="res-semkigi"><div class="vazio-msg">Cruze o caixa para ver o que foi recebido sem registro no Kigi.</div></div></div>
+    <div class="dv-pane" id="dv-naorecebido"><div id="res-naorecebido"><div class="vazio-msg">Cruze o caixa para ver vendas lançadas no Kigi que não foram recebidas.</div></div></div>
   </div>
 
-  <div class="tab-cont" id="tab-pix"><div id="res-pix"></div></div>
-
-  <div class="tab-cont" id="tab-taxas"><div id="res-taxas"><div class="vazio-msg">Carregue Kigi + Stone e cruze o caixa.</div></div></div>
-
-  <div class="tab-cont" id="tab-vendedoras">
-    <div class="vend-cfg">
-      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cr3);">De-para — código do Kigi → vendedora <span style="color:var(--ou3)">(salvo uma vez)</span></div>
-      <div class="vend-cfg-grid" id="vend-cfg-grid"></div>
-      <button class="bup bup-ouro" style="margin-top:14px;" onclick="salvarVendMap()">Salvar de-para</button>
+  <div class="tab-cont" id="tab-detalhes">
+    <div class="dv-nav">
+      <button class="dv-btn ativa" data-dv="cartao" onclick="trocarDet('cartao')">Cartão · Stone</button>
+      <button class="dv-btn" data-dv="pix" onclick="trocarDet('pix')">Pix · Sicoob</button>
+      <button class="dv-btn" data-dv="taxas" onclick="trocarDet('taxas')">Taxas</button>
+      <button class="dv-btn" data-dv="vendedoras" onclick="trocarDet('vendedoras')">Vendedoras</button>
     </div>
-    <div id="res-vendedoras"></div>
+    <div class="det-pane ativa" id="det-cartao">
+      <div style="margin:4px 0 16px;">
+        <button class="taxas-toggle" onclick="toggleTaxas()">▸ Ajustar taxas combinadas (Visa/Master POS)</button>
+      </div>
+      <div class="taxas-wrap" id="taxas-wrap">
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cr3);">Taxas combinadas p/ auditoria (%) — Elo/Amex/online pendentes</div>
+        <div class="taxas-grid" id="taxas-grid"></div>
+      </div>
+      <div id="res-cartao"></div>
+    </div>
+    <div class="det-pane" id="det-pix"><div id="res-pix"></div></div>
+    <div class="det-pane" id="det-taxas"><div id="res-taxas"><div class="vazio-msg">Carregue Kigi + Stone e cruze o caixa.</div></div></div>
+    <div class="det-pane" id="det-vendedoras">
+      <div class="vend-cfg">
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--cr3);">De-para — código do Kigi → vendedora <span style="color:var(--ou3)">(salvo uma vez)</span></div>
+        <div class="vend-cfg-grid" id="vend-cfg-grid"></div>
+        <button class="bup bup-ouro" style="margin-top:14px;" onclick="salvarVendMap()">Salvar de-para</button>
+      </div>
+      <div id="res-vendedoras"></div>
+    </div>
   </div>
 
   <div class="tab-cont" id="tab-dinheiro">
@@ -635,10 +677,31 @@ document.addEventListener('click',e=>{ const dd=document.getElementById('cal-dro
 
 /* ═════════════ TABS ═════════════ */
 function trocarTab(tab){
+  // aliases (links antigos continuam funcionando)
+  let sub='';
+  if(tab==='semkigi'||tab==='naorecebido'){ sub=tab; tab='divergencias'; }
+  if(tab==='cartao'||tab==='pix'||tab==='taxas'||tab==='vendedoras'){ sub=tab; tab='detalhes'; }
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('ativa',b.dataset.tab===tab));
   document.querySelectorAll('.tab-cont').forEach(c=>c.classList.toggle('ativa',c.id===`tab-${tab}`));
-  if(tab==='vendedoras') renderVendCfg();
-  if(tab==='naorecebido') renderNaoRecebido();
+  if(tab==='divergencias'&&sub) trocarDiv(sub);
+  if(tab==='detalhes') trocarDet(sub||'cartao');
+}
+function trocarDiv(sub){
+  document.querySelectorAll('#tab-divergencias .dv-btn').forEach(b=>b.classList.toggle('ativa',b.dataset.dv===sub));
+  document.querySelectorAll('#tab-divergencias .dv-pane').forEach(p=>p.classList.toggle('ativa',p.id===`dv-${sub}`));
+  if(sub==='naorecebido') renderNaoRecebido();
+}
+function trocarDet(sub){
+  document.querySelectorAll('#tab-detalhes .dv-btn').forEach(b=>b.classList.toggle('ativa',b.dataset.dv===sub));
+  document.querySelectorAll('#tab-detalhes .det-pane').forEach(p=>p.classList.toggle('ativa',p.id===`det-${sub}`));
+  if(sub==='vendedoras') renderVendCfg();
+}
+function atualizarBadgeDiverg(){
+  const tb=document.getElementById('tabbtn-diverg'); if(!tb) return;
+  const n=(D._skCount||0)+(D._nrCount||0);
+  tb.textContent = n ? `⚠ Divergências (${n})` : '✓ Divergências';
+  const b1=document.getElementById('dvbtn-semkigi'); if(b1) b1.textContent=(D._skCount?`⚠ `:'')+`Recebido sem Kigi${D._skCount?` (${D._skCount})`:''}`;
+  const b2=document.getElementById('dvbtn-naorecebido'); if(b2) b2.textContent=(D._nrCount?`⚠ `:'')+`No Kigi, não recebido${D._nrCount?` (${D._nrCount})`:''}`;
 }
 
 /* ═════════════ PARSER SICOOB (PDF) ═════════════
@@ -665,29 +728,43 @@ async function lerSicoob(file){
       });
     }
     const recebidos=[];
+    const textoTodo=linhas.join('\n');
+    // período declarado no cabeçalho do extrato
+    const mper=textoTodo.match(/PER[ÍI]ODO:\s*(\d{2})\/(\d{2})\/(\d{4})\s*[-–a]+\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+    let perSic={ ini: mper?`${mper[3]}-${mper[2]}-${mper[1]}`:'', fim: mper?`${mper[6]}-${mper[5]}-${mper[4]}`:'' };
+    const anoRef=mper?mper[3]:String(new Date().getFullYear());
+    let diaCorrente='';
     for(let i=0;i<linhas.length;i++){
       const L=linhas[i];
+      const md=L.match(/^(\d{2})\/(\d{2})\s/);
+      if(md) diaCorrente=`${anoRef}-${md[2]}-${md[1]}`;
       // linha de recebimento Pix
-      const m=L.match(/PIX\s+RECEB.*?([\d.]+,\d{2})\s*C/i);
+      const m=L.match(/(?:PIX\s+RECEB|CRED\.TR).*?([\d.]+,\d{2})\s*C/i);
       if(m){
         const valor=parseNum(m[1]);
         // nome: procura nas próximas 1-3 linhas algo que não seja "Recebimento Pix", CPF/CNPJ, DOC
         let nome='';
-        for(let j=i+1;j<=Math.min(i+4,linhas.length-1);j++){
-          const c=linhas[j].trim();
+        for(let j=i+1;j<=Math.min(i+5,linhas.length-1);j++){
+          let c=linhas[j].trim();
           if(/recebimento pix/i.test(c)) continue;
+          if(/transfer[êe]ncia pix/i.test(c)) continue;
+          if(/^REM\.?:/i.test(c)){ c=c.replace(/^REM\.?:\s*/i,'').trim(); }
           if(/^\*{0,3}[\d.\s/-]+\*{0,2}$/.test(c)) continue; // só números/cpf
           if(/^DOC\.?:/i.test(c)) continue;
           if(/solicitacao pix/i.test(c)) continue;
           if(/^\d{2}\.\d{3}\.\d{3}/.test(c)) continue; // cnpj
-          if(/PIX (RECEB|EMIT)/i.test(c)) break;
+          if(/PIX (RECEB|EMIT)|CRED\.TR|SALDO/i.test(c)) break;
+          // remove prefixo de CNPJ/número que às vezes vem colado no nome
+          c=c.replace(/^\d[\d\s.]{6,}\s+/,'').trim();
           if(c.length>2){ nome=c; break; }
         }
-        recebidos.push({ valor, nome:nome||'(sem identificação)' });
+        recebidos.push({ valor, nome:nome||'(sem identificação)', data:diaCorrente });
       }
     }
-    D.sicoob={ arquivo:file.name, recebidos, total:recebidos.reduce((s,r)=>s+r.valor,0) };
-    marcarUp('up-sicoob','meta-sicoob',file.name,`<b>${recebidos.length}</b> entradas Pix · <b>${fmtBRL(D.sicoob.total)}</b>`);
+    // fallback: período pelas datas das linhas
+    if(!perSic.ini){ const ds=recebidos.map(r=>r.data).filter(Boolean).sort(); perSic={ini:ds[0]||'',fim:ds[ds.length-1]||''}; }
+    D.sicoob={ arquivo:file.name, recebidos, periodo:perSic, total:recebidos.reduce((s,r)=>s+r.valor,0) };
+    marcarUp('up-sicoob','meta-sicoob',file.name,`<b>${recebidos.length}</b> entradas Pix${perSic.ini?` · ${brData(perSic.ini)}–${brData(perSic.fim)}`:''} · <b>${fmtBRL(D.sicoob.total)}</b>`);
     toast(`Sicoob: ${recebidos.length} recebimentos Pix lidos`,'ok');
   }catch(e){
     console.error(e); toast('Erro ao ler PDF do Sicoob','er');
@@ -795,6 +872,7 @@ function parseVendasEPagamentos(linhas, arquivo){
     crediario:[]
   };
   k.totPixSicoob=k.pixSicoob.reduce((s,p)=>s+p.valor,0); k.totCartaoSipag=0; k.porDia={};
+  k.aReceber=k.stoneBruto+k.totPixSicoob+k.dinheiro;
   return k;
 }
 
@@ -880,6 +958,8 @@ function parseFechamentoKigi(linhas, arquivo){
     crediario:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='crediario').map(p=>({...p,cliente:v.cliente,venda:v.n})))
   };
   k.totPixSicoob=k.pixSicoob.reduce((s,p)=>s+p.valor,0); k.totCartaoSipag=0;
+  // base da conferência = dinheiro que deve entrar (cartão + Pix + dinheiro), SEM troca/crédito loja/crediário
+  k.aReceber=Math.abs(totaisTipo.Credito||0)+Math.abs(totaisTipo.Debito||0)+Math.abs(totaisTipo.Pix||0)+Math.abs(totaisTipo.Dinheiro||0);
   k.porDia={}; vendas.forEach(v=>{ if(v.total>0) k.porDia[v.data]=(k.porDia[v.data]||0)+v.total; });
   // caixa aberto pode não ter data-fim: usa min/max das vendas
   const datasV=vendas.map(v=>v.data).filter(Boolean).sort();
@@ -955,13 +1035,17 @@ async function lerStone(file){
       const matches=texto.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g)||[];
       recebimentos=matches.map(m=>({valor:parseNum(m),bruto:0,liq:parseNum(m),desconto:0,bandeira:'',produto:'',parcelas:1,desc:'(PDF)'})).filter(r=>r.valor>0);
     }
+    // período coberto pelo arquivo (min/max das datas de venda)
+    const dIso=s=>{ const m=String(s||'').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?`${m[3]}-${m[2]}-${m[1]}`:''; };
+    const datasSt=recebimentos.map(r=>dIso(r.dataVenda)).filter(Boolean).sort();
     D.stone={
       arquivo:file.name, recebimentos,
+      periodo:{ ini:datasSt[0]||'', fim:datasSt[datasSt.length-1]||'' },
       total:recebimentos.reduce((s,r)=>s+r.liq,0),
       totalBruto:recebimentos.reduce((s,r)=>s+r.bruto,0),
       totalTaxa:recebimentos.reduce((s,r)=>s+r.desconto,0)
     };
-    marcarUp('up-stone','meta-stone',file.name,`<b>${recebimentos.length}</b> aprovadas · bruto <b>${fmtBRL(D.stone.totalBruto)}</b> · líquido <b>${fmtBRL(D.stone.total)}</b>`);
+    marcarUp('up-stone','meta-stone',file.name,`<b>${recebimentos.length}</b> aprovadas${D.stone.periodo.ini?` · ${brData(D.stone.periodo.ini)}–${brData(D.stone.periodo.fim)}`:''} · bruto <b>${fmtBRL(D.stone.totalBruto)}</b> · líquido <b>${fmtBRL(D.stone.total)}</b>`);
     toast(`Stone: ${recebimentos.length} transações aprovadas`,'ok');
   }catch(e){ console.error(e); toast('Erro ao ler CSV da Stone','er'); desmarcarUp('up-stone'); }
 }
@@ -1056,7 +1140,7 @@ function processarTudo(){
 
   // ── PIX (Sicoob): Chave/QR + Maquininha, ambos no Sicoob sem taxa ──
   if(D.sicoob){
-    const esp=D.kigi.pixSicoob.map(p=>({valor:p.valor, cliente:p.cliente, tipoPix:p.tipoPix}));
+    const esp=D.kigi.pixSicoob.map(p=>({...p, valor:p.valor}));
     const rec=D.sicoob.recebidos.map(r=>({valor:r.valor, nome:r.nome}));
     out.pix=conciliarPorValor(esp,rec);
     out.pix.totalEsp=D.kigi.totPixSicoob;
@@ -1121,6 +1205,12 @@ function processarTudo(){
   out.faltaList=faltaList;
   out.cruzados=cruzados;
 
+  // ── mapa de conferência automática (p/ layout estilo Kigi): venda|valor -> contagem ──
+  const addM=(map,key)=>{ map[key]=(map[key]||0)+1; };
+  out.matchCard={}; out.matchPix={};
+  if(out.cartao) out.cartao.conc.forEach(c=>{ if(c.esperado&&c.esperado.venda!=null) addM(out.matchCard, c.esperado.venda+'|'+Number(c.esperado.valor).toFixed(2)); });
+  if(out.pix) out.pix.conc.forEach(c=>{ if(c.esperado&&c.esperado.venda!=null) addM(out.matchPix, c.esperado.venda+'|'+Number(c.esperado.valor).toFixed(2)); });
+
   D.resultado=out;
   renderResultados(); renderKPIs();
   toast('Caixa cruzado','ok');
@@ -1157,27 +1247,53 @@ function renderResultados(){
   const pend=r.cartao?(r.cartao.falta.length+r.cartao.sobra.length):0;
   const semKigiAbertos=(r.semKigi||[]).filter(x=>!x.resolvido && !x._cruzado && !x._dividida);
   const semKigiVal=semKigiAbertos.reduce((s,x)=>s+x.valor,0);
+  const divididasVal=(r.semKigi||[]).filter(x=>x._dividida).reduce((s,x)=>s+x.valor,0);
+  const divididasN=(r.divididas||[]).length;
+  const aReceber=k.aReceber||(k.stoneBruto+k.totPixSicoob+k.dinheiro);
+  const naoDinheiro=k.totFaturado-aReceber; // troca / crédito loja / crediário
   const alertaSK = semKigiAbertos.length ? `<div style="margin-top:14px;padding:10px 14px;background:rgba(192,80,74,.14);border:1px solid rgba(192,80,74,.35);border-left:3px solid var(--er);position:relative;cursor:pointer;" onclick="trocarTab('semkigi')"><b style="color:#e8b0b0">${fmtBRL(semKigiVal)}</b> <span style="color:var(--cr2);font-size:13px;">recebido sem lançamento no Kigi — ${semKigiAbertos.length} a investigar →</span></div>` : '';
   const alertaCruz = cruzado>0 ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(212,180,90,.1);border:1px solid var(--oud2);border-left:3px solid var(--am);cursor:pointer;" onclick="trocarTab('semkigi')"><b style="color:var(--ou2)">${fmtBRL(cruzado)}</b> <span style="color:var(--cr2);font-size:13px;">provável forma de pagamento trocada (${r.cruzados.length} venda${r.cruzados.length>1?'s':''}) — confirmar →</span></div>` : '';
+  const alertaDiv = divididasN>0 ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(212,180,90,.07);border:1px solid var(--oud2);border-left:3px solid var(--ou3);cursor:pointer;" onclick="trocarTab('semkigi')"><b style="color:var(--ou2)">${fmtBRL(divididasVal)}</b> <span style="color:var(--cr2);font-size:13px;">em vendas divididas — já descontado do “sem Kigi” (${divididasN} venda${divididasN>1?'s':''}, sem valor por forma no relatório) →</span></div>` : '';
   const alertaDin = pendDin>0 ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(212,180,90,.1);border:1px solid var(--oud2);border-left:3px solid var(--am);cursor:pointer;" onclick="trocarTab('dinheiro')"><b style="color:var(--ou2)">${fmtBRL(pendDin)}</b> <span style="color:var(--cr2);font-size:13px;">em dinheiro aguardando contagem do caixa →</span></div>` : '';
-  const veredito = !tudoBate ? 'Há divergências a resolver' : (pendDin>0 ? 'Falta contar o caixa' : 'Caixa do dia bate ✓');
+
+  // ── ALERTA DE COBERTURA: as datas dos três arquivos batem? ──
+  let alertaCob='';
+  {
+    const pk=k.periodo||{}, ps=(D.stone&&D.stone.periodo)||{}, pc=(D.sicoob&&D.sicoob.periodo)||{};
+    const fmtPer=p=>p&&p.ini?(p.ini===p.fim?brData(p.ini):`${brData(p.ini)}–${brData(p.fim)}`):'?';
+    // uma fonte "cobre" o Kigi se seu intervalo contém o intervalo do Kigi
+    const cobre=p=>!!(p&&p.ini&&pk.ini&&p.ini<=pk.ini&&p.fim>=pk.fim);
+    const stoneOk=!D.stone||cobre(ps), sicoobOk=!D.sicoob||cobre(pc);
+    const tudoOk=stoneOk&&sicoobOk;
+    const linha=(nome,p,fonte,ok)=>`<span style="white-space:nowrap;">${nome}: <b style="color:${ok?'#a8d8a8':'#e8b0b0'}">${fmtPer(p)}</b>${ok?'':' ⚠'}</span>`;
+    const partes=[linha('Kigi',pk,'kigi',true)];
+    if(D.stone) partes.push(linha('Stone',ps,'stone',stoneOk));
+    if(D.sicoob) partes.push(linha('Sicoob',pc,'sicoob',sicoobOk));
+    alertaCob=`<div style="margin-top:14px;padding:10px 14px;background:${tudoOk?'rgba(96,129,62,.12)':'rgba(192,80,74,.14)'};border:1px solid ${tudoOk?'var(--oud2)':'rgba(192,80,74,.35)'};border-left:3px solid ${tudoOk?'var(--ok)':'var(--er)'};font-size:13px;color:var(--cr2);">
+      📅 <b style="color:var(--cr)">Cobertura dos arquivos:</b> &nbsp;${partes.join(' &nbsp;·&nbsp; ')}
+      ${tudoOk?'':`<div style="font-size:11px;color:var(--cr3);margin-top:6px;">⚠ As datas não batem: o arquivo marcado não cobre todo o período do Kigi. Parte do “não recebido” pode ser só falta de arquivo — suba o extrato/relatório do período completo antes de cobrar divergência.</div>`}
+    </div>`;
+  }
+  const veredito = !tudoBate ? 'Há divergências a resolver' : (pendDin>0 ? 'Falta contar o caixa' : 'Caixa bate ✓');
   const vClasse = (!tudoBate)?'alerta':(pendDin>0?'alerta':'ok');
   const hero=`<div class="hero">
     <div class="hero-top">
       <div>
         <div class="hero-veredito ${vClasse}">${veredito}</div>
-        <div class="hero-sub">${!tudoBate?`${pend} pendência(s) · ${fmtBRL(falta+extra)} em divergência`:(pendDin>0?'Cartão e Pix conciliados — só falta a contagem do dinheiro':'Tudo conciliado dentro da tolerância')}</div>
+        <div class="hero-sub">${!tudoBate?`${fmtBRL(falta+extra)} em divergência (cartão + Pix)`:(pendDin>0?'Cartão e Pix conciliados — só falta a contagem do dinheiro':'Tudo conciliado dentro da tolerância')}</div>
       </div>
-      <div class="hero-data">${dataExt}<br><span style="color:var(--ou2)">${fmtBRL(k.totFaturado)} faturado</span></div>
+      <div class="hero-data">${dataExt}<br><span style="color:var(--ou2)">${fmtBRL(k.totFaturado)} faturado</span>${naoDinheiro>0.5?`<br><span style="color:var(--cr3);font-size:10px;">sendo ${fmtBRL(naoDinheiro)} em troca/crédito na loja</span>`:''}</div>
     </div>
     <div class="hero-nums">
-      <div class="hero-num neu"><div class="hero-num-lbl">Faturado</div><div class="hero-num-val">${fmtBRL(k.totFaturado)}</div></div>
+      <div class="hero-num neu"><div class="hero-num-lbl">A receber (cartão+Pix+din.)</div><div class="hero-num-val">${fmtBRL(aReceber)}</div></div>
       <div class="hero-num ok"><div class="hero-num-lbl">Conciliado</div><div class="hero-num-val">${fmtBRL(ok)}</div></div>
       <div class="hero-num er" style="cursor:pointer" onclick="trocarTab('naorecebido')"><div class="hero-num-lbl">Não recebido</div><div class="hero-num-val">${fmtBRL(falta)}</div></div>
       <div class="hero-num am" style="cursor:pointer" onclick="trocarTab('semkigi')"><div class="hero-num-lbl">Recebido sem Kigi</div><div class="hero-num-val">${fmtBRL(extra)}</div></div>
     </div>
+    ${alertaCob}
     ${alertaSK}
     ${alertaCruz}
+    ${alertaDiv}
     ${alertaDin}
     <div class="hero-acoes">
       <button class="bup bup-ouro" onclick="exportarPDF()">📄 PDF do dia</button>
@@ -1264,6 +1380,7 @@ function renderResultados(){
   renderVendedoras();
   renderSemKigi();
   renderNaoRecebido();
+  renderPorConta();
 }
 
 function calcTotais(){
@@ -1292,7 +1409,7 @@ function calcTotais(){
 function renderKPIs(){
   const r=D.resultado; if(!r) return;
   const {ok,falta,extra,pendDin}=calcTotais();
-  document.getElementById('kpi-kigi').textContent=fmtBRL(D.kigi?D.kigi.totFaturado:0);
+  document.getElementById('kpi-kigi').textContent=fmtBRL(D.kigi?(D.kigi.aReceber||D.kigi.totFaturado):0);
   document.getElementById('kpi-ok').textContent=fmtBRL(ok);
   document.getElementById('kpi-falta').textContent=fmtBRL(falta);
   document.getElementById('kpi-extra').textContent=fmtBRL(extra);
@@ -1315,9 +1432,8 @@ function renderSemKigi(){
   const abertos=lista.filter(x=>!x.resolvido && !x._cruzado && !x._dividida);
   const totalAberto=abertos.reduce((s,x)=>s+x.valor,0);
   const totalGeral=lista.reduce((s,x)=>s+x.valor,0);
-  // badge na aba
-  const tb=document.getElementById('tabbtn-semkigi');
-  if(tb) tb.textContent = abertos.length ? `⚠ Recebido s/ Kigi (${abertos.length})` : '✓ Recebido s/ Kigi';
+  // badge unificado da aba Divergências
+  D._skCount=abertos.length; atualizarBadgeDiverg();
 
   if(!lista.length){ el.innerHTML='<div class="rec-bloco ok"><div class="rec-bloco-tit">✓ Tudo que foi recebido está lançado no Kigi<span class="ct">R$ 0,00</span></div></div>'; return; }
 
@@ -1326,7 +1442,7 @@ function renderSemKigi(){
     if(it.hora) det.push(`<span>🕐 <b>${it.hora}</b></span>`);
     if(it.fim4) det.push(`<span>cartão final <b>${it.fim4}</b></span>`);
     if(it.captura) det.push(`<span><b>${it.captura}</b></span>`);
-    if(it.pagador) det.push(`<span>pagador <b>${it.pagador}</b></span>`);
+    if(it.pagador) det.push(`<span>quem pagou (Pix, pelo banco): <b>${it.pagador}</b></span>`);
     if(it.stoneId) det.push(`<span style="color:var(--cr3)">id ${it.stoneId}</span>`);
     const sv=it.vendedora||'';
     const selVend=['',...VENDEDORAS,'Outro'].map(n=>`<option value="${n}" ${sv===n?'selected':''}>${n||'— vendedora —'}</option>`).join('');
@@ -1397,6 +1513,84 @@ function renderSemKigi(){
 }
 function renderResumoBadge(){ /* atalho p/ atualizar hero se preciso */ if(D.resultado) { /* hero recalcula no renderResultados */ } }
 
+/* ═════════════ CONFERÊNCIA POR CONTA (layout estilo Kigi) ═════════════ */
+function toggleConta(id){ const el=document.getElementById(id); if(el) el.classList.toggle('aberta'); }
+function conferirManual(chave){
+  D.resolucoes[chave]=D.resolucoes[chave]||{};
+  D.resolucoes[chave].conferido=!D.resolucoes[chave].conferido;
+  renderPorConta();
+  const id=idConf(); const salvo=fsLerConf(id)||{data:id};
+  salvo.resolucoes=D.resolucoes; fsSalvarConf(id,salvo);
+}
+function renderPorConta(){
+  const el=document.getElementById('res-porconta');
+  const r=D.resultado, k=D.kigi;
+  if(!r||!k){ el.innerHTML='<div class="vazio-msg">Cruze o caixa para ver a conferência por conta.</div>'; return; }
+  // cópias dos mapas de match (consumidas ao marcar auto)
+  const mc={...(r.matchCard||{})}, mp={...(r.matchPix||{})};
+  const consome=(map,key)=>{ if(map[key]>0){ map[key]--; return true; } return false; };
+  const tt=t=>Math.abs((k.totaisTipo&&k.totaisTipo[t])||0);
+
+  const linha=(v,p,auto,neutro)=>{
+    const chave='cf:'+p.forma+':'+v.n+':'+(p.valor==null?'div':Number(p.valor).toFixed(2));
+    const manual=!!(D.resolucoes[chave]&&D.resolucoes[chave].conferido);
+    const conferido=auto||manual;
+    const dividida=p.valor==null;
+    let btn;
+    if(neutro) btn='<div class="kg-btn neutro">—</div>';
+    else if(auto) btn='<div class="kg-btn ok">Conferido ✓</div>';
+    else if(dividida) btn='<div class="kg-btn neutro" title="venda dividida — relatório não informa o valor por forma">dividida</div>';
+    else btn=`<div class="kg-btn ${manual?'manual':''}" onclick="conferirManual('${chave}')">${manual?'Conferido ✓':'Conferir'}</div>`;
+    const tag=v.vendedor?` <span class="vend-tag">${v.vendedor}</span>`:'';
+    const tipoPix=p.forma==='pix_maq'?' · Pix Maquininha':(p.forma==='pix_qr'?' · Pix Chave/QR':'');
+    return { html:`<div class="kg-row">
+        <div class="kg-desc">Recebido de <b>${v.cliente}</b>${tag} · Venda <b>${v.n}</b>${tipoPix}${dividida?' · <span style="color:var(--ou3)">dividida</span>':''}</div>
+        <div class="kg-data">${v.data?brData(v.data)+'/'+v.data.slice(2,4):''}</div>
+        <div class="kg-val">${p.valor!=null?fmtBRL(p.valor):fmtBRL(v.total)+'*'}</div>
+        ${btn}
+      </div>`, valor:(p.valor!=null?p.valor:0), conferido:(conferido&&p.valor!=null)?p.valor:0 };
+  };
+
+  const conta=(id,nome,formas,totalHeader,matchMap,neutro,extraConferido,linkDinheiro,soSeTiver)=>{
+    const rows=[]; let soma=0, conf=extraConferido||0;
+    k.vendas.forEach(v=>{
+      (v.pgtos||[]).forEach(p=>{
+        if(!formas.includes(p.forma)) return;
+        const key=v.n+'|'+(p.valor==null?'':Number(p.valor).toFixed(2));
+        const auto=!neutro&&p.valor!=null&&matchMap?consome(matchMap,v.n+'|'+Number(p.valor).toFixed(2)):false;
+        const L=linha(v,p,auto,neutro);
+        rows.push(L.html); soma+=L.valor; conf+=L.conferido;
+      });
+    });
+    if(soSeTiver && !rows.length) return '';
+    const total=totalHeader!=null?totalHeader:soma;
+    const dif=+(total-conf).toFixed(2);
+    const difCls=Math.abs(dif)<=TOL?'zero':'er';
+    return `<div class="kg-conta" id="${id}">
+      <div class="kg-head" onclick="toggleConta('${id}')">
+        <div class="kg-nome">${nome}: <b>${fmtBRL(total)}</b></div>
+        <div class="kg-stat">Conferido: <b class="ok">${fmtBRL(conf)}</b></div>
+        <div class="kg-stat">Diferença: <b class="${difCls}">${fmtBRL(dif)}</b></div>
+        <div class="kg-stat" style="color:var(--ou3)">${rows.length} lanç.</div>
+        <div class="kg-chev">▾</div>
+      </div>
+      <div class="kg-hist">
+        ${linkDinheiro?`<div style="font-size:11px;color:var(--cr3);padding:10px 0 4px;">A contagem do caixa físico é feita na aba <b style="color:var(--ou2);cursor:pointer" onclick="trocarTab('dinheiro')">💵 Dinheiro</b>.</div>`:''}
+        ${rows.length?`<div class="kg-hist-tit"><span>Histórico</span><span>Data</span><span style="text-align:right">Valor</span><span></span></div>${rows.join('')}`:'<div style="font-size:12px;color:var(--cr3);padding:12px 0;">Nenhum lançamento.</div>'}
+      </div>
+    </div>`;
+  };
+
+  el.innerHTML=
+    `<div style="font-size:12px;color:var(--cr3);margin:4px 0 14px;">O sistema já marca <b style="color:#b8e0a8">Conferido ✓</b> automaticamente o que casou com a Stone/Sicoob. Só sobra pra você o que está em <b style="color:var(--cr2)">Conferir</b> — clique para marcar manualmente após verificar.</div>
+    ${conta('kg-cred','Conta Cartão de Crédito',['credito'],tt('Credito'),mc,false)}
+    ${conta('kg-deb','Conta Cartão de Débito',['debito'],tt('Debito'),mc,false)}
+    ${conta('kg-pix','Conta Pix',['pix_maq','pix_qr'],tt('Pix'),mp,false)}
+    ${conta('kg-din','Conta Dinheiro',['dinheiro'],tt('Dinheiro'),null,true,(D.dinheiroContado>0?Math.min(D.dinheiroContado,tt('Dinheiro')):0),true)}
+    ${conta('kg-cloja','Conta Crédito Loja',['credito_loja'],null,null,true,0,false,true)}
+    ${conta('kg-credi','Conta Crediário Loja',['crediario'],tt('Titulo')||null,null,true,0,false,true)}`;
+}
+
 /* ═════════════ NO KIGI, NÃO RECEBIDO ═════════════ */
 function resolverNaoRecebido(chave,campo,valor){
   D.resolucoes[chave]=D.resolucoes[chave]||{};
@@ -1412,8 +1606,7 @@ function renderNaoRecebido(){
   const lista=(r.faltaList||[]);
   const abertos=lista.filter(x=>!x.resolvido && !x._cruzado);
   const totalAberto=abertos.reduce((s,x)=>s+x.valor,0);
-  const tb=document.getElementById('tabbtn-naorecebido');
-  if(tb) tb.textContent = abertos.length ? `No Kigi, não recebido (${abertos.length})` : '✓ No Kigi, não recebido';
+  D._nrCount=abertos.length; atualizarBadgeDiverg();
 
   if(!lista.length){ el.innerHTML='<div class="rec-bloco ok"><div class="rec-bloco-tit">✓ Toda venda lançada no Kigi foi recebida<span class="ct">R$ 0,00</span></div></div>'; return; }
 
@@ -1689,7 +1882,7 @@ function carregarDia(){
   D={ kigi:null, sicoob:null, stone:null, dinheiroContado:0, resultado:null, resolucoes:{} };
   limparKigi(); limparSicoob(); limparStone();
   document.getElementById('in-dinheiro').value='';
-  ['res-resumo','res-cartao','res-pix','res-taxas','res-vendedoras','res-dinheiro','res-semkigi','res-naorecebido'].forEach(i=>{const e=document.getElementById(i);if(e)e.innerHTML='';});
+  ['res-resumo','res-cartao','res-pix','res-taxas','res-vendedoras','res-dinheiro','res-semkigi','res-naorecebido','res-porconta'].forEach(i=>{const e=document.getElementById(i);if(e)e.innerHTML='';});
   document.getElementById('res-resumo').innerHTML='<div class="vazio-msg">Carregue os arquivos e clique em “Cruzar Caixa”.</div>';
   ['kpi-kigi','kpi-ok','kpi-falta','kpi-extra'].forEach(i=>document.getElementById(i).textContent='R$ 0,00');
 
@@ -1728,7 +1921,7 @@ Object.assign(window,{abrirLogin,cancelarLogin,fazerLogin,recuperarSenha,fazerLo
   toggleCal,calNavMes,selecionarDia,navDia,trocarTab,lerKigi,lerSicoob,lerStone,
   limparKigi,limparSicoob,limparStone,salvarDinheiroContado,mascaraMoeda,
   toggleTaxas,processarTudo,salvarConferencia,TAXAS,
-  salvarVendMap,renderVendCfg,exportarPDF,resolverSemKigi,renderSemKigi,resolverNaoRecebido,renderNaoRecebido});
+  salvarVendMap,renderVendCfg,exportarPDF,resolverSemKigi,renderSemKigi,resolverNaoRecebido,renderNaoRecebido,renderPorConta,toggleConta,conferirManual,trocarDiv,trocarDet});
 </script>
 
 </body>
