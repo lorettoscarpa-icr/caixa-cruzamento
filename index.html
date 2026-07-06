@@ -369,7 +369,7 @@ table.rec tr:hover td{background:rgba(255,255,255,.015);}
       <div class="upbox-ok"><div class="upbox-ok-tit">Sicoob carregado</div><div class="upbox-ok-meta" id="meta-sicoob"></div><div class="upbox-acts"><button class="bup" onclick="event.stopPropagation();document.getElementById('in-sicoob').click()">↑ Substituir</button><button class="bup" onclick="event.stopPropagation();limparSicoob()">Limpar</button></div></div>
     </div>
   </div>
-  <input type="file" id="in-kigi" accept=".pdf" style="display:none" onchange="lerKigi(this.files[0])">
+  <input type="file" id="in-kigi" accept=".pdf,.html,.htm" style="display:none" onchange="lerKigi(this.files[0])">
   <input type="file" id="in-stone" accept=".csv,.pdf" style="display:none" onchange="lerStone(this.files[0])">
   <input type="file" id="in-sicoob" accept=".pdf" style="display:none" onchange="lerSicoob(this.files[0])">
 
@@ -730,22 +730,72 @@ async function lerKigi(file){
   if(!file) return;
   marcarUp('up-kigi','meta-kigi',file.name,'lendo...');
   try{
-    const buf=await file.arrayBuffer();
-    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
     let linhas=[];
-    for(let p=1;p<=pdf.numPages;p++){
-      const page=await pdf.getPage(p); const tc=await page.getTextContent();
-      const porY={};
-      tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); (porY[y]=porY[y]||[]).push(it.str); });
-      Object.keys(porY).map(Number).sort((a,b)=>b-a).forEach(y=>linhas.push(porY[y].join(' ').replace(/\s+/g,' ').trim()));
+    if(/\.html?$/i.test(file.name)){
+      // Relatório exportado como HTML (mesmo conteúdo do PDF)
+      let raw=await file.text();
+      raw=raw.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+      raw=raw.replace(/<\/(tr|div|p|table|h[1-6]|li)>/gi,'\n').replace(/<br\s*\/?>/gi,'\n');
+      raw=raw.replace(/<[^>]+>/g,' ');
+      const ta=document.createElement('textarea'); ta.innerHTML=raw; raw=ta.value; // decode entidades
+      raw=raw.replace(/[ \t]+/g,' ');
+      linhas=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    } else {
+      const buf=await file.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      for(let p=1;p<=pdf.numPages;p++){
+        const page=await pdf.getPage(p); const tc=await page.getTextContent();
+        const porY={};
+        tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); (porY[y]=porY[y]||[]).push(it.str); });
+        Object.keys(porY).map(Number).sort((a,b)=>b-a).forEach(y=>linhas.push(porY[y].join(' ').replace(/\s+/g,' ').trim()));
+      }
     }
-    D.kigi=parseFechamentoKigi(linhas, file.name);
+    // Detecta o formato do relatório e usa o parser certo
+    const blob=linhas.join('\n');
+    const ehFechamento=/Tipos de recebimento|Relatório analítico de caixa|Pagos em:/i.test(blob);
+    D.kigi = ehFechamento ? parseFechamentoKigi(linhas, file.name) : parseVendasEPagamentos(linhas, file.name);
     const k=D.kigi;
-    const per=k.periodo.ini&&k.periodo.fim&&k.periodo.ini!==k.periodo.fim?` · ${brData(k.periodo.ini)}–${brData(k.periodo.fim)}`:(k.periodo.ini?` · ${brData(k.periodo.ini)}`:'');
-    const meta=`<b>${k.vendas.length}</b> vendas${per} · Cartão <b>${fmtBRL(k.stoneBruto)}</b> · Pix <b>${fmtBRL(k.totPixSicoob)}</b> · Dinheiro <b>${fmtBRL(k.dinheiro)}</b>`;
+    const per=k.periodo&&k.periodo.ini&&k.periodo.fim&&k.periodo.ini!==k.periodo.fim?` · ${brData(k.periodo.ini)}–${brData(k.periodo.fim)}`:(k.periodo&&k.periodo.ini?` · ${brData(k.periodo.ini)}`:'');
+    const meta=`<b>${k.vendas.length}</b> vendas${per} · <span style="color:var(--ou3)">${k.formato}</span> · Cartão <b>${fmtBRL(k.stoneBruto)}</b> · Pix <b>${fmtBRL(k.totPixSicoob)}</b> · Dinheiro <b>${fmtBRL(k.dinheiro)}</b>`;
     marcarUp('up-kigi','meta-kigi',file.name,meta);
-    toast(`Kigi: ${k.vendas.length} vendas${k.splits?` (${k.splits} dividida(s))`:''}`,'ok');
-  }catch(e){ console.error(e); toast('Erro ao ler PDF do Kigi','er'); desmarcarUp('up-kigi'); }
+    toast(`Kigi (${k.formato}): ${k.vendas.length} vendas${k.splits?` · ${k.splits} dividida(s)`:''}`,'ok');
+  }catch(e){ console.error(e); toast('Erro ao ler relatório do Kigi','er'); desmarcarUp('up-kigi'); }
+}
+
+/* Parser do formato ANTIGO "Vendas e Pagamentos" (PDF) — mantém compatibilidade.
+   Cada venda: cabeçalho (RE_CAB) + linhas "Pagamentos:" com valor POR forma. */
+function parseVendasEPagamentos(linhas, arquivo){
+  const idxTot=linhas.findIndex(l=>/Totalizadores/i.test(l));
+  if(idxTot>-1) linhas=linhas.slice(0,idxTot);
+  const vendas=[]; let atual=null, modo=false;
+  linhas.forEach(ln=>{
+    const s=ln.trim();
+    const m=s.match(RE_CAB);
+    if(m){ atual={n:m[1],tipo:m[2],cliente:m[4].trim(),vendedor:m[6],vendedora:'',data:'',total:parseNum(m[8]),formas:[],pgtos:[]}; vendas.push(atual); modo=false; return; }
+    if(/Pagamentos:/.test(s)){ modo=true; const resto=s.split('Pagamentos:')[1]; if(resto&&resto.trim()&&atual) atual.pgtos.push(...parsePagamentos(resto)); return; }
+    if(modo&&atual) atual.pgtos.push(...parsePagamentos(s));
+  });
+  // passadas de cartão (soma parcelas por venda+bandeira+valor-parcela)
+  const swipesStone=[];
+  vendas.forEach(v=>{
+    const cards=v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Stone');
+    const grupos={};
+    cards.forEach(p=>{ const key=p.bandeira+'|'+Math.round(p.valor); (grupos[key]=grupos[key]||[]).push(p); });
+    Object.values(grupos).forEach(ps=>swipesStone.push({ venda:v.n, cliente:v.cliente, bandeira:ps[0].bandeira, ehDebito:ps[0].forma==='debito', parcelas:ps.length, bruto:+ps.reduce((s,x)=>s+x.valor,0).toFixed(2) }));
+  });
+  const soma=f=>vendas.reduce((s,v)=>s+v.pgtos.filter(p=>p.forma===f).reduce((a,p)=>a+p.valor,0),0);
+  const k={
+    arquivo, formato:'Vendas e Pagamentos', periodo:{ini:'',fim:''}, splits:0, divididas:[], splitCardResidual:0, splitPixResidual:0,
+    vendas, swipesStone,
+    totFaturado:vendas.reduce((s,v)=>s+(v.total>0?v.total:0),0),
+    stoneBruto:swipesStone.reduce((s,x)=>s+x.bruto,0),
+    pixSicoob:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='pix_qr'||p.forma==='pix_maq').map(p=>({...p,cliente:v.cliente,venda:v.n,tipoPix:p.forma==='pix_maq'?'Maquininha':'Chave/QR'}))),
+    cartaoSipag:[], dinheiro:soma('dinheiro'), titulo:0, deposito:0,
+    creditoLoja:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='credito_loja').map(p=>({...p,cliente:v.cliente,venda:v.n,tipo:v.tipo}))),
+    crediario:[]
+  };
+  k.totPixSicoob=k.pixSicoob.reduce((s,p)=>s+p.valor,0); k.totCartaoSipag=0; k.porDia={};
+  return k;
 }
 
 function brData(iso){ if(!iso) return ''; const [a,m,d]=iso.split('-'); return `${d}/${m}`; }
@@ -760,20 +810,28 @@ function parseFechamentoKigi(linhas, arquivo){
   const toISO=br=>{ const [d,m,a]=br.split('/'); return `${a}-${m}-${d}`; };
   const mp=texto.match(/Período:\s*(\d{2}\/\d{2}\/\d{4})[\s\S]*?(\d{2}\/\d{2}\/\d{4})/);
   const periodo={ ini:mp?toISO(mp[1]):'', fim:mp?toISO(mp[2]):'' };
-  // totais por tipo: Dinheiro Débito Depósito Crédito Cheque Título Pix
+  // totais de VENDAS por tipo (linha "Venda/Troca": só vendas, sem saldo inicial/títulos)
   const chaves=['Dinheiro','Debito','Deposito','Credito','Cheque','Titulo','Pix'];
   let totaisTipo={};
   for(const ln of linhas){
-    if(!/^Total:/.test(ln)) continue;
+    if(!/^Venda\/Troca\b/.test(ln)) continue;
     const vals=ln.match(/\(?R\$\s*[\-\d.,]+\)?/g);
     if(vals&&vals.length===7){ vals.forEach((v,i)=>{ const neg=/\(/.test(v); totaisTipo[chaves[i]]=parseNum(v.replace(/[()R$\s]/g,''))*(neg?-1:1); }); break; }
+  }
+  // fallback: linha Total (caso layout mude)
+  if(!Object.keys(totaisTipo).length){
+    for(const ln of linhas){
+      if(!/^Total:/.test(ln)) continue;
+      const vals=ln.match(/\(?R\$\s*[\-\d.,]+\)?/g);
+      if(vals&&vals.length===7){ vals.forEach((v,i)=>{ totaisTipo[chaves[i]]=parseNum(v.replace(/[()R$\s]/g,'')); }); break; }
+    }
   }
   const tt=k=>Math.abs(totaisTipo[k]||0);
   const msi=texto.match(/Saldo inicial\s*R\$\s*([\d.,]+)/);
   const saldoInicial=msi?parseNum(msi[1]):0;
   const bandeiras={}; let mb; const reB=/(MASTERCARD|VISA|ELO|AMERICANEXPRESS|HIPERCARD|DINERS)\s+(Crédito|Credito|Débito|Debito)\s+R\$([\d.,]+)/g;
   while((mb=reB.exec(texto))){ bandeiras[`${mb[1]} ${/r[ée]d/i.test(mb[2])?'Crédito':'Débito'}`]=parseNum(mb[3]); }
-  const RE_VENDA=/^(Venda Simples|Venda por Troca|Devolução por troca|Venda Cartão Presente)\s+(.+?)\s+([\d.]+)\s+(\d{2}\/\d{2}\/\d{4})\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?$/;
+  const RE_VENDA=/^(Venda Simples Consignada|Venda Simples|Venda por Troca|Devolução por troca|Venda Cartão Presente)\s+(.+?)\s+([\d.]+)\s+(\d{2}\/\d{2}\/\d{4})\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?\s+R?\$?\s*\(?([\-\d.,]+)\)?$/;
   const vendas=[];
   linhas.forEach((ln,i)=>{
     const m=ln.match(RE_VENDA); if(!m) return;
@@ -789,45 +847,43 @@ function parseFechamentoKigi(linhas, arquivo){
   const isCard=f=>f==='credito'||f==='debito', isPix=f=>f==='pix_maq'||f==='pix_qr', isMoney=f=>isCard(f)||isPix(f);
   const single={credito:0,debito:0,pix_maq:0,pix_qr:0};
   vendas.forEach(v=>{ if(v.formas.length===1&&single[v.formas[0]]!==undefined) single[v.formas[0]]+=v.total; });
-  let resCred=+(tt('Credito')-single.credito).toFixed(2);
-  let resDeb=+(tt('Debito')-single.debito).toFixed(2);
-  let resPix=+(tt('Pix')-single.pix_maq-single.pix_qr).toFixed(2);
   let nSplit=0;
   vendas.forEach(v=>{
     if(v.formas.length===1){
       const f=v.formas[0];
       v.pgtos.push({forma:f, valor:v.total, bandeira:'', adq:isCard(f)?'Stone':isPix(f)?'Sicoob':''});
     } else if(v.formas.length>1){
-      nSplit++; v._dividida=true; let usado=0;
-      v.formas.forEach(f=>{
-        let val=0;
-        if(f==='credito'){ val=resCred; resCred=0; }
-        else if(f==='debito'){ val=resDeb; resDeb=0; }
-        else if(isPix(f)){ val=resPix; resPix=0; }
-        if(val>0){ v.pgtos.push({forma:f, valor:+val.toFixed(2), bandeira:'', adq:isCard(f)?'Stone':'Sicoob', _estimado:true}); usado+=val; }
-      });
-      const neutra=v.formas.find(f=>f==='credito_loja'||f==='crediario');
-      if(neutra) v.pgtos.push({forma:neutra, valor:+(v.total-usado).toFixed(2), bandeira:'', adq:''});
-      else if(usado<v.total-0.05){
-        const resto=v.formas.find(isMoney)||v.formas[0];
-        v.pgtos.push({forma:resto, valor:+(v.total-usado).toFixed(2), bandeira:'', adq:isCard(resto)?'Stone':isPix(resto)?'Sicoob':'', _incerto:true});
-      }
+      // Relatório NÃO traz o valor por forma numa venda dividida.
+      // Não fabricamos valores: guardamos as formas e tratamos no agregado.
+      nSplit++; v._dividida=true;
+      v.pgtos=v.formas.map(f=>({forma:f, valor:null, bandeira:'', adq:isCard(f)?'Stone':isPix(f)?'Sicoob':'', _semValor:true}));
     }
   });
-  const swipesStone=vendas.flatMap(v=>v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Stone').map(p=>({ venda:v.n, cliente:v.cliente, bandeira:p.bandeira||'', ehDebito:p.forma==='debito', parcelas:1, bruto:p.valor })));
+  // swipes/pix só das vendas de forma única (valor conhecido)
+  const swipesStone=vendas.flatMap(v=>v.pgtos.filter(p=>(p.forma==='credito'||p.forma==='debito')&&p.adq==='Stone'&&p.valor!=null).map(p=>({ venda:v.n, cliente:v.cliente, bandeira:'', ehDebito:p.forma==='debito', parcelas:1, bruto:p.valor })));
+  // residuais exatos (total de vendas por tipo − soma das de forma única) = valor escondido nas divididas
+  const totCardVendas=Math.abs(totaisTipo.Credito||0)+Math.abs(totaisTipo.Debito||0);
+  const totPixVendas=Math.abs(totaisTipo.Pix||0);
+  const splitCardResidual=+(totCardVendas-(single.credito+single.debito)).toFixed(2);
+  const splitPixResidual=+(totPixVendas-(single.pix_maq+single.pix_qr)).toFixed(2);
+  const divididas=vendas.filter(v=>v._dividida).map(v=>({ n:v.n, cliente:v.cliente, vendedora:v.vendedora, data:v.data, total:v.total, formas:v.formas.slice() }));
   const k={
-    arquivo, periodo, totaisTipo, bandeiras, saldoInicial, splits:nSplit,
+    arquivo, formato:'Fechamento de caixa', periodo, totaisTipo, bandeiras, saldoInicial, splits:nSplit, divididas,
+    splitCardResidual, splitPixResidual,
     vendas, swipesStone,
     totFaturado:vendas.reduce((s,v)=>s+(v.total>0?v.total:0),0),
     stoneBruto:swipesStone.reduce((s,x)=>s+x.bruto,0),
-    pixSicoob:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='pix_qr'||p.forma==='pix_maq').map(p=>({...p,cliente:v.cliente,venda:v.n,tipoPix:p.forma==='pix_maq'?'Maquininha':'Chave/QR'}))),
+    pixSicoob:vendas.flatMap(v=>v.pgtos.filter(p=>(p.forma==='pix_qr'||p.forma==='pix_maq')&&p.valor!=null).map(p=>({...p,cliente:v.cliente,venda:v.n,tipoPix:p.forma==='pix_maq'?'Maquininha':'Chave/QR'}))),
     cartaoSipag:[],
-    dinheiro: tt('Dinheiro'), titulo: tt('Titulo'), deposito: tt('Deposito'),
+    dinheiro: Math.abs(totaisTipo.Dinheiro||0), titulo: Math.abs(totaisTipo.Titulo||0), deposito: Math.abs(totaisTipo.Deposito||0),
     creditoLoja:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='credito_loja').map(p=>({...p,cliente:v.cliente,venda:v.n,tipo:v.tipo}))),
     crediario:vendas.flatMap(v=>v.pgtos.filter(p=>p.forma==='crediario').map(p=>({...p,cliente:v.cliente,venda:v.n})))
   };
   k.totPixSicoob=k.pixSicoob.reduce((s,p)=>s+p.valor,0); k.totCartaoSipag=0;
   k.porDia={}; vendas.forEach(v=>{ if(v.total>0) k.porDia[v.data]=(k.porDia[v.data]||0)+v.total; });
+  // caixa aberto pode não ter data-fim: usa min/max das vendas
+  const datasV=vendas.map(v=>v.data).filter(Boolean).sort();
+  if(datasV.length){ if(!periodo.ini) periodo.ini=datasV[0]; if(!periodo.fim||periodo.fim<periodo.ini) periodo.fim=datasV[datasV.length-1]; }
   return k;
 }
 
@@ -1015,6 +1071,18 @@ function processarTudo(){
   // aplica resoluções salvas
   semKigi.forEach(it=>{ const r=D.resolucoes[it.chave]; if(r){ it.vendedora=r.vendedora||''; it.nota=r.nota||''; it.resolvido=!!r.resolvido; } });
   out.semKigi=semKigi.sort((a,b)=>b.valor-a.valor);
+  // Vendas divididas: o relatório não detalha o valor por forma. Parte dos recebimentos
+  // "sem Kigi" abaixo pertence às vendas divididas (residual exato conhecido). Marca prováveis.
+  const consomeResidual=(origem,budget)=>{
+    if(!budget||budget<=TOL) return;
+    let acc=0;
+    out.semKigi.filter(x=>x.origem===origem).sort((a,b)=>b.valor-a.valor).forEach(x=>{
+      if(!x._dividida && acc+x.valor<=budget+TOL){ x._dividida=true; acc+=x.valor; }
+    });
+  };
+  consomeResidual('Stone', (D.kigi.splitCardResidual)||0);
+  consomeResidual('Sicoob', (D.kigi.splitPixResidual)||0);
+  out.divididas=D.kigi.divididas||[];
 
   // ── 2ª PASSADA: cruza "No Kigi não recebido" (falta) × "Recebido sem Kigi" (sobra) ──
   // Mesmo valor nos dois lados sugere a MESMA venda com forma de pagamento trocada.
@@ -1073,7 +1141,7 @@ function renderResultados(){
     ? `${brData(perK.ini)} a ${brData(perK.fim)} · ${Object.keys(k.porDia||{}).length||2} dias`
     : (perK.ini ? brData(perK.ini)+'/'+perK.ini.slice(0,4) : `${String(d.getDate()).padStart(2,'0')} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`);
   const pend=r.cartao?(r.cartao.falta.length+r.cartao.sobra.length):0;
-  const semKigiAbertos=(r.semKigi||[]).filter(x=>!x.resolvido && !x._cruzado);
+  const semKigiAbertos=(r.semKigi||[]).filter(x=>!x.resolvido && !x._cruzado && !x._dividida);
   const semKigiVal=semKigiAbertos.reduce((s,x)=>s+x.valor,0);
   const alertaSK = semKigiAbertos.length ? `<div style="margin-top:14px;padding:10px 14px;background:rgba(192,80,74,.14);border:1px solid rgba(192,80,74,.35);border-left:3px solid var(--er);position:relative;cursor:pointer;" onclick="trocarTab('semkigi')"><b style="color:#e8b0b0">${fmtBRL(semKigiVal)}</b> <span style="color:var(--cr2);font-size:13px;">recebido sem lançamento no Kigi — ${semKigiAbertos.length} a investigar →</span></div>` : '';
   const alertaCruz = cruzado>0 ? `<div style="margin-top:10px;padding:10px 14px;background:rgba(212,180,90,.1);border:1px solid var(--oud2);border-left:3px solid var(--am);cursor:pointer;" onclick="trocarTab('semkigi')"><b style="color:var(--ou2)">${fmtBRL(cruzado)}</b> <span style="color:var(--cr2);font-size:13px;">provável forma de pagamento trocada (${r.cruzados.length} venda${r.cruzados.length>1?'s':''}) — confirmar →</span></div>` : '';
@@ -1190,7 +1258,7 @@ function calcTotais(){
   if(r.faltaList){ falta=r.faltaList.filter(f=>!f._cruzado).reduce((s,f)=>s+f.valor,0); }
   else { if(r.cartao) falta+=r.cartao.falta.reduce((s,c)=>s+c.bruto,0); if(r.pix) falta+=r.pix.falta.reduce((s,c)=>s+c.valor,0); }
   // extra = "Recebido sem Kigi" excluindo os cruzados
-  if(r.semKigi){ extra=r.semKigi.filter(s=>!s._cruzado).reduce((s,x)=>s+x.valor,0); }
+  if(r.semKigi){ extra=r.semKigi.filter(s=>!s._cruzado && !s._dividida).reduce((s,x)=>s+x.valor,0); }
   // conciliado
   if(r.cartao) ok+=r.cartao.conc.reduce((s,c)=>s+c.recebido.bruto,0);
   if(r.pix) ok+=r.pix.conc.reduce((s,c)=>s+c.esperado.valor,0);
@@ -1230,7 +1298,7 @@ function renderSemKigi(){
   const r=D.resultado;
   if(!r){ el.innerHTML='<div class="vazio-msg">Cruze o caixa para ver o que foi recebido sem registro no Kigi.</div>'; return; }
   const lista=r.semKigi||[];
-  const abertos=lista.filter(x=>!x.resolvido && !x._cruzado);
+  const abertos=lista.filter(x=>!x.resolvido && !x._cruzado && !x._dividida);
   const totalAberto=abertos.reduce((s,x)=>s+x.valor,0);
   const totalGeral=lista.reduce((s,x)=>s+x.valor,0);
   // badge na aba
@@ -1264,7 +1332,7 @@ function renderSemKigi(){
   };
 
   const secao=(origem,titulo,dica)=>{
-    const itens=lista.filter(x=>x.origem===origem && !x._cruzado);
+    const itens=lista.filter(x=>x.origem===origem && !x._cruzado && !x._dividida);
     if(!itens.length) return '';
     const abAberto=itens.filter(x=>!x.resolvido);
     const subtotal=abAberto.reduce((s,x)=>s+x.valor,0);
@@ -1272,6 +1340,18 @@ function renderSemKigi(){
       <div style="font-size:11px;color:var(--cr3);margin:-12px 0 14px;">${dica}</div>
       ${itens.map(cardHTML).join('')}`;
   };
+  // vendas divididas (relatório não detalha valor por forma)
+  const div=(r.divididas||[]);
+  const skDiv=lista.filter(x=>x._dividida);
+  let secDiv='';
+  if(div.length||skDiv.length){
+    const rows=div.map(d=>`<tr><td class="val num">${fmtBRL(d.total)}</td><td>${d.cliente||'—'}</td><td>${d.vendedora||'—'}</td><td>${d.formas.map(f=>({credito:'Crédito',debito:'Débito',pix_maq:'Pix Maq.',pix_qr:'Pix QR',credito_loja:'Créd. loja',crediario:'Crediário'}[f]||f)).join(' + ')}</td></tr>`).join('');
+    secDiv=`<div class="rec-bloco" style="border-left:3px solid var(--ou3);">
+      <div class="rec-bloco-tit" style="background:rgba(212,180,90,.08);color:var(--ou2);">🔀 Vendas divididas — conferir valor por forma <span style="opacity:.7">· ${div.length}</span><span class="ct">${fmtBRL(div.reduce((s,d)=>s+d.total,0))}</span></div>
+      <div style="font-size:11px;color:var(--cr3);margin:6px 0 12px;">O relatório de fechamento lista as formas mas <b>não o valor de cada uma</b> nas vendas com pagamento dividido. Os recebimentos correspondentes (~${fmtBRL(((D.kigi&&D.kigi.splitCardResidual)||0)+((D.kigi&&D.kigi.splitPixResidual)||0))}) foram descontados do “sem Kigi” automaticamente. Confira o rateio se precisar do detalhe por forma.</div>
+      <div class="tab-wrap"><table class="rec"><thead><tr><th class="num">Total</th><th>Cliente</th><th>Vendedora</th><th>Formas</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+  }
 
   // 2ª passada: prováveis mesma venda (forma trocada)
   const cruz=(r.cruzados||[]);
@@ -1297,6 +1377,7 @@ function renderSemKigi(){
       <div style="font-size:11px;color:var(--cr3);margin-top:8px;">A venda não tem vendedora porque nunca foi lançada. Atribua a vendedora, anote qual foi a venda e marque como resolvido.</div>
     </div>
     ${secCruz}
+    ${secDiv}
     ${secao('Stone','💳 Recebido na Stone (cartão) sem venda no Kigi','Use o horário, a bandeira/parcelas e os últimos 4 dígitos do cartão para identificar a passada e quem vendeu.')}
     ${secao('Sicoob','📲 Recebido no Sicoob (Pix) sem venda no Kigi','Use o nome do pagador e o valor para localizar a venda. Pix do fim de semana pode aparecer na segunda — confira a data.')}`;
 }
